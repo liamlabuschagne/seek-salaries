@@ -3,11 +3,57 @@
   <head>
     <title>Seek Search</title>
     <style>
+      /* Styles for the entire page including all the buttons and the table that gives a nice smooth, modern look with pastel colours */
+
       th,
       td {
-        border: 1px solid black;
+        border-bottom: 1px solid #ddd;
         padding: 8px;
         text-align: left;
+      }
+
+      * {
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 14px 20px;
+        margin: 8px 0;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:hover {
+        opacity: 0.8;
+      }
+
+      input {
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        margin-top: 6px;
+        margin-bottom: 16px;
+      }
+
+      label {
+        font-weight: bold;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      select {
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        margin-top: 6px;
+        margin-bottom: 16px;
       }
     </style>
   </head>
@@ -17,6 +63,13 @@
       To use this tool you need to directly use the seek website to get get the
       job data.
     </p>
+    <a href="https://www.seek.co.nz" target="_blank">Seek NZ</a>
+    <a href="https://www.seek.com.au" target="_blank">Seek AUS</a>
+    <p>
+      <strong>Note:</strong> You will need a laptop or desktop computer to
+      complete this task.
+    </p>
+
     <ol>
       <li>
         Start a seek search as you normally would to search for your ideal role
@@ -42,14 +95,18 @@
         100+ pages in your search.
       </li>
       <li>Save the .json file to your computer which you can upload below</li>
+      <li>(Optional) Download the data as a CSV for further analysis</li>
     </ol>
-    <label for="seekURL">GET URL:</label>
+    <label for="seekURL">URL:</label>
     <input type="text" id="seekURL" />
     <button id="copyButton">Copy Script</button>
 
     <label for="file">JSON File:</label>
     <input type="file" id="file" />
     <p id="resultsCount"></p>
+
+    <input type="text" id="filter-title" placeholder="Filter title" />
+    <input type="text" id="filter-company" placeholder="Filter company" />
 
     <select id="sortColumn">
       <option value="title">Title</option>
@@ -59,9 +116,6 @@
       <option value="salary-to-lo">Salary To (lowest)</option>
       <option value="salary-to-hi">Salary To (highest)</option>
     </select>
-
-    <input type="text" id="filter-title" placeholder="Filter title" />
-    <input type="text" id="filter-company" placeholder="Filter company" />
 
     <button id="downloadButton">Download CSV</button>
 
