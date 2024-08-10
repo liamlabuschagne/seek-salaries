@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Seek Search</title>
+    <style>
+      th,
+      td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Seek Search</h1>
+    <p>
+      To use this tool you need to directly use the seek website to get get the
+      job data.
+    </p>
+    <ol>
+      <li>
+        Start a seek search as you normally would to search for your ideal role
+        (without pressing seek)
+      </li>
+      <li>Press Ctrl+Shift+I to open the developer console</li>
+      <li>
+        Filter the results in the Network tab with the following string:
+        search?siteKey
+      </li>
+      <li>Press "Seek"</li>
+      <li>
+        Select the (only) result and copy the entire URL after "GET" in the
+        headers tab
+      </li>
+      <li>
+        Paste the url in the following input box and press "Copy Script" to get
+        a script added to your clipboard
+      </li>
+      <li>
+        Paste the entire script into the console on the seek page and press
+        enter <strong>NOTE:</strong> This may take quite a while if there are
+        100+ pages in your search.
+      </li>
+      <li>Save the .json file to your computer which you can upload below</li>
+    </ol>
+    <label for="seekURL">GET URL:</label>
+    <input type="text" id="seekURL" />
+    <button id="copyButton">Copy Script</button>
+
+    <label for="file">JSON File:</label>
+    <input type="file" id="file" />
+    <p id="resultsCount"></p>
+
+    <select id="sortColumn">
+      <option value="title">Title</option>
+      <option value="companyName">Company</option>
+      <option value="salary-from-lo">Salary From (lowest)</option>
+      <option value="salary-from-hi">Salary From (highest)</option>
+      <option value="salary-to-lo">Salary To (lowest)</option>
+      <option value="salary-to-hi">Salary To (highest)</option>
+    </select>
+
+    <input type="text" id="filter-title" placeholder="Filter title" />
+    <input type="text" id="filter-company" placeholder="Filter company" />
+
+    <button id="downloadButton">Download CSV</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Company</th>
+          <th>Salary Details</th>
+          <th>Salary From ($/hr)</th>
+          <th>Salary To ($/hr)</th>
+        </tr>
+      </thead>
+      <tbody id="jobs-table"></tbody>
+    </table>
+
+    <script>
+      let jobsTableData = [];
+      let totalUnfilteredJobs = 0;
+
+      // Add event listener for download button
+      document
+        .getElementById("downloadButton")
+        .addEventListener("click", function () {
+          let csv =
+            "Title,Company,Salary Details,Salary From ($/hr),Salary To ($/hr)\n";
+          jobsTableData.forEach((job) => {
+            csv += `"${job.title}","${job.companyName}","${
+              job.salaryDetails
+            }","${job.salary[0]}","${
+              job.salary.length > 1 ? job.salary[1] : job.salary[0]
+            }"\n`;
+          });
+
+          let blob = new Blob([csv], { type: "text/csv" });
+          let url = URL.createObjectURL(blob);
+          let a = document.createElement("a");
+          a.href = url;
+          a.download = "jobs.csv";
+          a.click();
+        });
+
+      // Add event listener for URL input
+      document
+        .getElementById("copyButton")
+        .addEventListener("click", async function () {
+          let url = document.querySelector("#seekURL").value;
+          let script = await fetch("/script.js");
+          script = await script.text();
+          script = script.replace("URL_GOES_HERE", url);
+
+          // Copy the script to the clipboard
+          navigator.clipboard.writeText(script);
+
+          alert("Script copied to clipboard");
+        });
+
+      // Add event listener for title filter
+      document
+        .getElementById("filter-title")
+        .addEventListener("input", function (event) {
+          updateTable(jobsTableData);
+        });
+
+      // Add event listener for company filter
+      document
+        .getElementById("filter-company")
+        .addEventListener("input", function (event) {
+          updateTable(jobsTableData);
+        });
+
+      // Add an event listener for the select
+      document
+        .getElementById("sortColumn")
+        .addEventListener("change", function (event) {
+          let column = event.target.value;
+          jobsTableData.sort((a, b) => {
+            switch (column) {
+              case "salary-from-lo":
+                return parseFloat(a.salary[0]) - parseFloat(b.salary[0]);
+              case "salary-from-hi":
+                return parseFloat(b.salary[0]) - parseFloat(a.salary[0]);
+              case "salary-to-lo":
+                return (
+                  parseFloat(a.salary[a.salary.length - 1]) -
+                  parseFloat(b.salary[b.salary.length - 1])
+                );
+              case "salary-to-hi":
+                return (
+                  parseFloat(b.salary[b.salary.length - 1]) -
+                  parseFloat(a.salary[a.salary.length - 1])
+                );
+              case "title":
+                return (a.title ? a.title : "").localeCompare(
+                  b.title ? b.title : ""
+                );
+              case "companyName":
+                return (a.companyName ? a.companyName : "").localeCompare(
+                  b.companyName ? b.companyName : ""
+                );
+            }
+          });
+          updateTable(jobsTableData);
+        });
+
+      document
+        .getElementById("file")
+        .addEventListener("change", async function () {
+          let file = this.files[0];
+          let text = await file.text();
+          let data = JSON.parse(text);
+
+          totalUnfilteredJobs = data.length;
+
+          data.forEach((job) => {
+            // Check if the salary is empty string
+            if (job.salary === "") {
+              return;
+            }
+
+            // Check if the salary doesn't have any numbers
+            if (!job.salary.match(/\d/)) {
+              return;
+            }
+
+            job.salary = job.salary.toLowerCase();
+
+            // Remove numbers with % sign in salary
+            if (job.salary.match(/%/)) {
+              job.salary = job.salary.replace(/(\d+\.\d+%)|(\d+%)/g, "");
+            }
+
+            // Remove any commans
+            job.salary = job.salary.replace(/,/g, "");
+
+            // Apply regex to extract the numbers e.g $100,000 to $120,000
+            salary = job.salary.match(
+              /(\$\d+,\d+\.\d+)|(\$\d+,\d+)|(\$\d+k)|(\d+k)|(\$\d+\.\d+)|(\$\d+)|(\d+\.\d+)|(\d\d+)/g
+            );
+
+            // if the salary contains "hour" or "ph" or "p/h" add "ph" to the end of each number in the salary array
+            if (job.salary.match(/hour|ph|p\/h/)) {
+              salary = salary.map((s) => s + "ph");
+            }
+
+            // If the salary contains "day" or "pd" or "p/d" or "p.d" add "pd" to the end of each number in the salary array
+            if (job.salary.match(/day|pd|p\/d|p\.d/)) {
+              salary = salary.map((s) => s + "pd");
+            }
+
+            // If the salary contains "week" or "pw" or "p/w" add "pw" to the end of each number in the salary array
+            if (job.salary.match(/week|pw|p\/w/)) {
+              salary = salary.map((s) => s + "pw");
+            }
+
+            // If the salary contains "month" or "pm" or "p/m" add "pm" to the end of each number in the salary array
+            if (job.salary.match(/month|pm|p\/m/)) {
+              salary = salary.map((s) => s + "pm");
+            }
+
+            // If no numbers were left after this, skip this job
+            if (salary === null) {
+              return;
+            }
+
+            // If the salary starts with a 0 then remove it
+            salary = salary.map((s) => {
+              if (s.match(/^0/)) {
+                return null;
+              }
+              return s;
+            });
+
+            // Remove null values
+            salary = salary.filter((s) => s !== null);
+
+            // Normalise to per hour
+
+            // Remove every $ sign
+            salary = salary.map((s) => s.replace(/\$/, ""));
+
+            // Remove ph
+            salary = salary.map((s) => s.replace(/ph/, ""));
+
+            // If the number ends in pw, divide by 40
+            salary = salary.map((s) => {
+              if (s.match(/pw/)) {
+                return (parseFloat(s) / 40).toString();
+              }
+              return s;
+            });
+
+            // If the number ends in pm multiply by 12 and divide by 2080
+            salary = salary.map((s) => {
+              if (s.match(/pm/)) {
+                return ((parseFloat(s) * 12) / 2080).toString();
+              }
+              return s;
+            });
+
+            // If the number is more than 500 and less than 1100 add "pd" to the end
+            salary = salary.map((s) => {
+              if (parseFloat(s) > 500 && parseFloat(s) < 10000) {
+                return s + "pd";
+              }
+
+              return s;
+            });
+
+            // If the number has a k in it, replace that with 000
+            salary = salary.map((s) => {
+              if (s.match(/k/)) {
+                return s.replace(/k/, "000");
+              }
+              return s;
+            });
+
+            // If the number ends in pd, divide by 8
+            salary = salary.map((s) => {
+              if (s.match(/pd/)) {
+                return (parseFloat(s) / 8).toString();
+              }
+              return s;
+            });
+
+            // If the number is more than 1000, divide by 2080
+            salary = salary.map((s) => {
+              if (parseFloat(s) > 1000) {
+                return (parseFloat(s) / 2080).toString();
+              }
+              return s;
+            });
+
+            // Order the salary array in ascending order
+            salary = salary.sort((a, b) => parseFloat(a) - parseFloat(b));
+
+            // Take only the first two numbers
+            salary = salary.slice(0, 2);
+
+            // Convert to string with fixed 2 decimal places
+            salary = salary.map((s) => parseFloat(s).toFixed(2));
+
+            jobsTableData.push({
+              title: job.title,
+              companyName: job.companyName,
+              salary: salary,
+              salaryDetails: job.salary,
+            });
+          });
+
+          updateTable(jobsTableData);
+        });
+
+      function updateTable(jobsData) {
+        // Update the results count
+        document.getElementById(
+          "resultsCount"
+        ).textContent = `Results: ${jobsData.length}/${totalUnfilteredJobs} (jobs with no salary removed)`;
+
+        // Filter by title
+        let titleFilter = document.getElementById("filter-title").value;
+
+        console.log(jobsData);
+
+        if (titleFilter !== "") {
+          jobsData = jobsData.filter((job) => {
+            return job.title
+              ? job.title.toLowerCase().includes(titleFilter)
+              : "";
+          });
+        }
+
+        // Filter by company
+        let companyFilter = document.getElementById("filter-company").value;
+        if (companyFilter !== "") {
+          jobsData = jobsData.filter((job) => {
+            return job.companyName
+              ? job.companyName.toLowerCase().includes(companyFilter)
+              : "";
+          });
+        }
+        console.log(jobsData);
+
+        // Add this job to the table
+        let jobsTable = document.getElementById("jobs-table");
+        jobsTable.innerHTML = "";
+        jobsData.forEach((job) => {
+          // Create a tr element
+          let tr = document.createElement("tr");
+          // Create a td element for each property in the job object
+          let tdTitle = document.createElement("td");
+          tdTitle.textContent = job.title;
+          let tdCompany = document.createElement("td");
+          tdCompany.textContent = job.companyName;
+          let tdSalaryDetails = document.createElement("td");
+          tdSalaryDetails.textContent = job.salaryDetails;
+          let tdSalaryFrom = document.createElement("td");
+          tdSalaryFrom.textContent = job.salary[0];
+          let tdSalaryTo = document.createElement("td");
+          tdSalaryTo.textContent =
+            job.salary.length > 1 ? job.salary[1] : job.salary[0];
+          // Append the td elements to the tr element
+          tr.appendChild(tdTitle);
+          tr.appendChild(tdCompany);
+          tr.appendChild(tdSalaryDetails);
+          tr.appendChild(tdSalaryFrom);
+          tr.appendChild(tdSalaryTo);
+          // Append the tr element to the table
+          jobsTable.appendChild(tr);
+        });
+      }
+    </script>
+  </body>
+</html>
