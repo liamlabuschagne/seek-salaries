@@ -262,17 +262,16 @@
             }
 
             // If the salary contains "day" or "pd" or "p/d" or "p.d" add "pd" to the end of each number in the salary array
-            if (job.salary.match(/day|pd|p\/d|p\.d/)) {
+            else if (job.salary.match(/day|pd|p\/d|p\.d/)) {
               salary = salary.map((s) => s + "pd");
             }
 
             // If the salary contains "week" or "pw" or "p/w" add "pw" to the end of each number in the salary array
-            if (job.salary.match(/week|pw|p\/w/)) {
+            else if (job.salary.match(/week|pw|p\/w/)) {
               salary = salary.map((s) => s + "pw");
             }
-
             // If the salary contains "month" or "pm" or "p/m" add "pm" to the end of each number in the salary array
-            if (job.salary.match(/month|pm|p\/m/)) {
+            else if (job.salary.match(/month|pm|p\/m/)) {
               salary = salary.map((s) => s + "pm");
             }
 
@@ -349,11 +348,11 @@
               return s;
             });
 
-            // Order the salary array in ascending order
-            salary = salary.sort((a, b) => parseFloat(a) - parseFloat(b));
-
             // Take only the first two numbers
             salary = salary.slice(0, 2);
+
+            // Order the salary array in ascending order
+            salary = salary.sort((a, b) => parseFloat(a) - parseFloat(b));
 
             // Convert to string with fixed 2 decimal places
             salary = salary.map((s) => parseFloat(s).toFixed(2));
@@ -378,8 +377,6 @@
         // Filter by title
         let titleFilter = document.getElementById("filter-title").value;
 
-        console.log(jobsData);
-
         if (titleFilter !== "") {
           jobsData = jobsData.filter((job) => {
             return job.title
@@ -397,7 +394,6 @@
               : "";
           });
         }
-        console.log(jobsData);
 
         // Add this job to the table
         let jobsTable = document.getElementById("jobs-table");
