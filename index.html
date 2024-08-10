@@ -163,7 +163,7 @@
         .getElementById("copyButton")
         .addEventListener("click", async function () {
           let url = document.querySelector("#seekURL").value;
-          let script = await fetch("/script.js");
+          let script = await fetch("script.js");
           script = await script.text();
           script = script.replace("URL_GOES_HERE", url);
 
