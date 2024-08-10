@@ -256,6 +256,10 @@
               /(\$\d+,\d+\.\d+)|(\$\d+,\d+)|(\$\d+k)|(\d+k)|(\$\d+\.\d+)|(\$\d+)|(\d+\.\d+)|(\d\d+)/g
             );
 
+            if (salary === null) {
+              return;
+            }
+
             // if the salary contains "hour" or "ph" or "p/h" add "ph" to the end of each number in the salary array
             if (job.salary.match(/hour|ph|p\/h/)) {
               salary = salary.map((s) => s + "ph");
